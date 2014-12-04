@@ -16,12 +16,12 @@ namespace cuckoofilter {
     // the most naive table implementation: one huge bit array
     template <size_t bits_per_tag>
     class SingleTable {
-        static const size_t tags_per_bucket  = 4;
+        static const size_t tags_per_bucket  = 1;
         static const size_t bytes_per_bucket = (bits_per_tag * tags_per_bucket + 7) >> 3;
 
         struct Bucket {
             char bits_[bytes_per_bucket];
-        } __attribute__((__packed__));
+        };// __attribute__((__packed__));
 
         // using a pointer adds one more indirection
         Bucket *buckets_;

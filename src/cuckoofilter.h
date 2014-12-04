@@ -70,12 +70,22 @@ namespace cuckoofilter {
             *tag   = TagHash((uint32_t) (hv & 0xFFFFFFFF));
         }
 
-        inline size_t AltIndex(const size_t index, const uint32_t tag) const {
+        inline size_t AltIndex(const size_t index, const uint32_t tag, int which) const {
             // NOTE(binfan): originally we use:
             // index ^ HashUtil::BobHash((const void*) (&tag), 4)) & table_->INDEXMASK;
             // now doing a quick-n-dirty way:
             // 0x5bd1e995 is the hash constant from MurmurHash2
-            return IndexHash((uint32_t) (index ^ (tag * 0x5bd1e995)));
+            switch (which) {
+                case 0:
+                    return index;
+                case 1:
+                    return IndexHash((uint32_t) (index ^ (tag * 0x5bd1e995)));
+                case 2:
+                    return IndexHash((uint32_t) (index ^ HashUtil::BobHash((const void*) (&tag), 4)));
+                case 3:
+                    return IndexHash((uint32_t) (index ^ (tag * 0x5bd1e995) ^ HashUtil::BobHash((const void*) (&tag), 4)));
+            }
+            return 0;
         }
 
         Status AddImpl(const size_t i, const uint32_t tag);
@@ -91,12 +101,14 @@ namespace cuckoofilter {
 
     public:
         explicit CuckooFilter(const size_t max_num_keys): num_items_(0) {
-            size_t assoc = 4;
+            size_t assoc = 1;
             size_t num_buckets = upperpower2(max_num_keys / assoc);
+            /*
             double frac = (double) max_num_keys / num_buckets / assoc;
             if (frac > 0.96) {
                 num_buckets <<= 1;
             }
+            */
             victim_.used = false;
             table_  = new TableType<bits_per_item>(num_buckets);
         }
@@ -153,16 +165,16 @@ namespace cuckoofilter {
         uint32_t oldtag;
 
         for (uint32_t count = 0; count < kMaxCuckooCount; count++) {
-            bool kickout = count > 0;
             oldtag = 0;
-            if (table_->InsertTagToBucket(curindex, curtag, kickout, oldtag)) {
-                num_items_++;
-                return Ok;
+            for (int i=0; i<4; i++) {
+                bool kickout = i == 3;
+                if (table_->InsertTagToBucket(AltIndex(curindex, curtag, i), curtag, kickout, oldtag)) {
+                    num_items_++;
+                    return Ok;
+                }
             }
-            if (kickout) {
-                curtag = oldtag;
-            }
-            curindex = AltIndex(curindex, curtag);
+            curtag = oldtag;
+            curindex = AltIndex(curindex, curtag, (rand() % 3)+1);
         }
 
         victim_.index = curindex;
@@ -178,20 +190,25 @@ namespace cuckoofilter {
     CuckooFilter<ItemType, bits_per_item, TableType>::Contain(
             const ItemType& key) const {
         bool found = false;
-        size_t i1, i2;
+        size_t i1;
         uint32_t tag;
 
         GenerateIndexTagHash(key, &i1, &tag);
-        i2 = AltIndex(i1, tag);
 
-        assert(i1 == AltIndex(i2, tag));
-
+        /* TODO: Support victim cache
         found = victim_.used && (tag == victim_.tag) && 
             (i1 == victim_.index || i2 == victim_.index);
+            */
 
-        if (found || table_->FindTagInBuckets(i1, i2, tag)) {
+        if (found) {
             return Ok;
         } else {
+            for (int i=0; i<4; i++) {
+                size_t i2 = AltIndex(i1, tag, i);
+                if (table_->FindTagInBucket(i2, tag)) {
+                    return Ok;
+                }
+            }
             return NotFound;
         }
     }
@@ -206,7 +223,8 @@ namespace cuckoofilter {
         uint32_t tag;
 
         GenerateIndexTagHash(key, &i1, &tag);
-        i2 = AltIndex(i1, tag);
+        // TODO: Doesn't support
+        i2 = AltIndex(i1, tag, 0);
 
         if (table_->DeleteTagFromBucket(i1, tag))  {
             num_items_--;

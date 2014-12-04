@@ -1,8 +1,8 @@
 CC = g++
 
 # Uncomment one of the following to switch between debug and opt mode
-#OPT = -O3 -DNDEBUG
-OPT = -g -ggdb
+OPT = -O2 -DNDEBUG
+#OPT = -g -ggdb
 
 CFLAGS += -Wall -c -I. -I./include -I/usr/include/ -I./src/ $(OPT)
 
