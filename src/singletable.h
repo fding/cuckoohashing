@@ -40,7 +40,11 @@ namespace cuckoofilter {
         ~SingleTable() {
             delete [] buckets_;
         }
-
+        
+	void print() {
+	    for(int i = 0; i < num_buckets; ++i)
+		std::cout << "Bucket " << i << "has " << buckets_[i].bits_ << std::endl;
+	}
         void CleanupTags() { memset(buckets_, 0, bytes_per_bucket * num_buckets); }
 
         size_t SizeInBytes() const { return bytes_per_bucket * num_buckets; }
@@ -206,14 +210,16 @@ namespace cuckoofilter {
         inline  bool  InsertTagToBucket(const size_t i,  const uint32_t tag,
                                          const bool kickout, uint32_t& oldtag) {
             for (size_t j = 0; j < tags_per_bucket; j++ ){
-                if (ReadTag(i, j) == 0) {
-                    WriteTag(i, j, tag);
+                if (ReadTag(i, j) == 0) 
+		{
+		    WriteTag(i, j, tag);
                     return true;
                 }
             }
             if (kickout) {
                 size_t r = rand() % tags_per_bucket;
                 oldtag = ReadTag(i, r);
+		//std::cout << "Kicking out in insert " << oldtag << ", NewTag" << tag << std::endl;
                 WriteTag(i, r, tag);
             }
             return false;

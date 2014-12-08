@@ -27,11 +27,17 @@ int main(int argc, char** argv) {
             break;
         }
     }
-
     // Check if previously inserted items are in the filter, expected
     // true for all items
+    size_t counter = 0;
     for (size_t i = 0; i < num_inserted; i++) {
-        assert(filter.Contain(i*i) == cuckoofilter::Ok);
+        if(filter.Contain(i*i) == cuckoofilter::Ok) {
+            counter++;
+	}
+    }
+    
+    if( counter != num_inserted ) {
+        std::cout << "Counter is " << counter << "while actual is " << num_inserted << std::endl;
     }
 
     // Check non-existing items, a few false positives expected

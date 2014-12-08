@@ -81,9 +81,11 @@ namespace cuckoofilter {
                 case 1:
                     return IndexHash((uint32_t) (index ^ (tag * 0x5bd1e995)));
                 case 2:
-                    return IndexHash((uint32_t) (index ^ HashUtil::BobHash((const void*) (&tag), 4)));
+                    //return IndexHash((uint32_t) (index ^ (tag * 0x18777B15 )));
+		    return IndexHash((uint32_t) (index ^ HashUtil::BobHash((const void*) (&tag), 4)));
                 case 3:
-                    return IndexHash((uint32_t) (index ^ (tag * 0x5bd1e995) ^ HashUtil::BobHash((const void*) (&tag), 4)));
+                    //return IndexHash((uint32_t) (index ^ (tag * 0x5bd1e995 ) ^ (tag * 0x18777B15 )));
+		    return IndexHash((uint32_t) (index ^ (tag * 0x5bd1e995) ^ HashUtil::BobHash((const void*) (&tag), 4)));
             }
             return 0;
         }
@@ -130,7 +132,9 @@ namespace cuckoofilter {
         /* methods for providing stats  */
         // summary infomation
         std::string Info() const;
-
+        void print() const {
+	    table_->print();
+	}
         // number of current inserted items;
         size_t Size() const { return num_items_; }
 
@@ -167,19 +171,21 @@ namespace cuckoofilter {
         for (uint32_t count = 0; count < kMaxCuckooCount; count++) {
             oldtag = 0;
             for (int i=0; i<4; i++) {
-                bool kickout = i == 3;
+                bool kickout = (i == 3);
                 if (table_->InsertTagToBucket(AltIndex(curindex, curtag, i), curtag, kickout, oldtag)) {
-                    num_items_++;
+		    ////std::cout << "inserting ind " << curindex << "tag " << curtag << "into " << AltIndex(curindex, curtag, i) << std::endl;
+		    num_items_++;
                     return Ok;
                 }
             }
-            curtag = oldtag;
-            curindex = AltIndex(curindex, curtag, (rand() % 3)+1);
-        }
 
-        victim_.index = curindex;
-        victim_.tag = curtag;
-        victim_.used = true;
+            curindex = AltIndex(curindex, curtag, 3);
+            curtag = oldtag;
+
+        }
+	victim_.index = curindex;
+	victim_.tag = curtag;
+	victim_.used = true;
         return Ok;
     }
 
@@ -190,22 +196,29 @@ namespace cuckoofilter {
     CuckooFilter<ItemType, bits_per_item, TableType>::Contain(
             const ItemType& key) const {
         bool found = false;
-        size_t i1;
+        size_t inds[4];
         uint32_t tag;
 
-        GenerateIndexTagHash(key, &i1, &tag);
-
-        /* TODO: Support victim cache
-        found = victim_.used && (tag == victim_.tag) && 
-            (i1 == victim_.index || i2 == victim_.index);
-            */
+        GenerateIndexTagHash(key, &inds[0], &tag);
+	for(int i = 1; i < 4; ++i) {
+	     inds[i] = AltIndex(inds[0], tag, i);
+	}
+	bool victim_matches = false;
+	for(int i = 0; i < 4; ++i) {
+	     if(inds[i] == victim_.index) {
+		victim_matches = true;
+		break;	     
+	     }
+	}
+	
+        found = victim_.used && (tag == victim_.tag) && victim_matches;
 
         if (found) {
             return Ok;
         } else {
             for (int i=0; i<4; i++) {
-                size_t i2 = AltIndex(i1, tag, i);
-                if (table_->FindTagInBucket(i2, tag)) {
+                //std::cout << "Searching for tag " << tag << " in bucket " << inds[i] << std::endl;
+		if (table_->FindTagInBucket(inds[i], tag)) {
                     return Ok;
                 }
             }
