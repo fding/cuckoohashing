@@ -16,17 +16,10 @@ double time_diff(struct rusage& start, struct rusage& end) {
         start.ru_utime.tv_sec - start.ru_stime.tv_sec);
 }
 
-int main(int argc, char** argv) {
-    size_t total_items  = 1<<20;
-
-    // Create a cuckoo filter where each item is of type size_t and
-    // use 12 bits for each item:
-    //    CuckooFilter<size_t, 12> filter(total_items);
-    // To enable semi-sorting, define the storage of cuckoo filter to be
-    // PackedTable, accepting keys of size_t type and making 13 bits
-    // for each key:
-    //   CuckooFilter<size_t, 13, PackedTable> filter(total_items);
-    CuckooFilter<size_t, 8> filter(total_items);
+template <int fingerprint_size>
+int test(int total_items) {
+    CuckooFilter<size_t, fingerprint_size> filter(total_items);
+    std::cout << "fingerprint_size="<<fingerprint_size<<","<<"m="<<total_items<<std::endl;
 
     // Insert items to this cuckoo filter
     size_t num_inserted = 0;
@@ -41,7 +34,7 @@ int main(int argc, char** argv) {
     }
     getrusage(RUSAGE_SELF, &end);
 
-    std::cout << "Construction throughput (MOPS): " << num_inserted/time_diff(start, end) << std::endl;
+    std::cout << "Construction throughput (MOPS): " << num_inserted/time_diff(start, end) << ",";
 
     // Check if previously inserted items are in the filter, expected
     // true for all items
@@ -55,7 +48,7 @@ int main(int argc, char** argv) {
     }
     getrusage(RUSAGE_SELF, &end);
     
-    std::cout << "Positive query throughput (MOPS): " << num_inserted/time_diff(start, end) << std::endl;
+    std::cout << "Positive query throughput (MOPS): " << num_inserted/time_diff(start, end) << ",";
 
     if( counter != num_inserted ) {
         std::cout << "Counter is " << counter << "while actual is " << num_inserted << std::endl;
@@ -77,11 +70,20 @@ int main(int argc, char** argv) {
     std::cout << "Negative query throughput (MOPS): " << num_inserted/time_diff(start, end) << std::endl;
 
     // Output the measured false positive rate
-    std::cout << "false positive rate is "
-              << 100.0 * false_queries / total_queries
-              << "%\n";
+    std::cout << "false_positive_rate="<< ((double) false_queries) / total_queries<< ",";
+    std::cout << "load_factor="<<filter.LoadFactor() << ",";
+    std::cout << "bits_per_item="<<filter.BitsPerItem() << std::endl;
+}
 
-    std::cout << filter.Info();
+int main(int argc, char** argv) {
+    size_t total_items  = 1<<20;
+
+    test<2>(total_items);
+    test<4>(total_items);
+    test<8>(total_items);
+    test<12>(total_items);
+    test<16>(total_items);
+    test<32>(total_items);
 
     return 0;
  }

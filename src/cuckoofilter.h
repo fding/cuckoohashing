@@ -92,6 +92,8 @@ namespace cuckoofilter {
 
         Status AddImpl(const size_t i, const uint32_t tag);
 
+    public:
+
         // load factor is the fraction of occupancy
         double LoadFactor() const {
             return 1.0 * Size()  / table_->SizeInTags();
@@ -101,7 +103,6 @@ namespace cuckoofilter {
             return table_->BitsPerTag() / LoadFactor();
         }
 
-    public:
         explicit CuckooFilter(const size_t max_num_keys): num_items_(0) {
             size_t assoc = 1;
             size_t num_buckets = upperpower2(max_num_keys / assoc);

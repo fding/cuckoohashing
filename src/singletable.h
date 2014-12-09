@@ -212,16 +212,14 @@ namespace cuckoofilter {
         inline  bool  InsertTagToBucket(const size_t i,  const uint32_t tag,
                                          const bool kickout, uint32_t& oldtag) {
             for (size_t j = 0; j < tags_per_bucket; j++ ){
-                if (ReadTag(i, j) == 0) 
-		{
-		    WriteTag(i, j, tag);
+                if (ReadTag(i, j) == 0) {
+                    WriteTag(i, j, tag);
                     return true;
                 }
             }
             if (kickout) {
                 size_t r = rand() % tags_per_bucket;
                 oldtag = ReadTag(i, r);
-		//std::cout << "Kicking out in insert " << oldtag << ", NewTag" << tag << std::endl;
                 WriteTag(i, r, tag);
             }
             return false;
