@@ -49,6 +49,8 @@ namespace cuckoofilter {
 
         size_t SizeInBytes() const { return bytes_per_bucket * num_buckets; }
 
+        size_t BitsPerTag() const { return bits_per_tag; }
+
         size_t SizeInTags() const { return tags_per_bucket * num_buckets; }
 
         std::string Info() const  {

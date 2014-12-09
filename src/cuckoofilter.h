@@ -98,7 +98,7 @@ namespace cuckoofilter {
         }
 
         double BitsPerItem() const {
-            return 8.0 * table_->SizeInBytes() / Size();
+            return table_->BitsPerTag() / LoadFactor();
         }
 
     public:
@@ -170,16 +170,30 @@ namespace cuckoofilter {
 
         for (uint32_t count = 0; count < kMaxCuckooCount; count++) {
             oldtag = 0;
+            int seq[4] = {0, 1, 2, 3};
+            int x, tmp;
+            x = rand() % 4;
+            tmp = seq[x];
+            seq[x] = seq[3];
+            seq[3] = tmp;
+            x = rand() % 3;
+            tmp = seq[x];
+            seq[x] = seq[2];
+            seq[2] = tmp;
+            x = rand() % 2;
+            tmp = seq[x];
+            seq[x] = seq[1];
+            seq[1] = tmp;
             for (int i=0; i<4; i++) {
                 bool kickout = (i == 3);
-                if (table_->InsertTagToBucket(AltIndex(curindex, curtag, i), curtag, kickout, oldtag)) {
+                if (table_->InsertTagToBucket(AltIndex(curindex, curtag, seq[i]), curtag, kickout, oldtag)) {
 		    ////std::cout << "inserting ind " << curindex << "tag " << curtag << "into " << AltIndex(curindex, curtag, i) << std::endl;
 		    num_items_++;
                     return Ok;
                 }
             }
 
-            curindex = AltIndex(curindex, curtag, 3);
+            curindex = AltIndex(curindex, curtag, seq[3]);
             curtag = oldtag;
 
         }

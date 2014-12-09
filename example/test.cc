@@ -17,7 +17,7 @@ double time_diff(struct rusage& start, struct rusage& end) {
 }
 
 int main(int argc, char** argv) {
-    size_t total_items  = 1<<24;
+    size_t total_items  = 1<<20;
 
     // Create a cuckoo filter where each item is of type size_t and
     // use 12 bits for each item:
@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     // PackedTable, accepting keys of size_t type and making 13 bits
     // for each key:
     //   CuckooFilter<size_t, 13, PackedTable> filter(total_items);
-    CuckooFilter<size_t, 12> filter(total_items);
+    CuckooFilter<size_t, 8> filter(total_items);
 
     // Insert items to this cuckoo filter
     size_t num_inserted = 0;
